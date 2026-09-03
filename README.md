@@ -41,6 +41,8 @@ Esta é uma decomposição histórica descritiva. Não é previsão, não é bac
 
 ```
 workbook/regimes_earnings_juros_report.xlsx   12 abas, 9 gráficos nativos do Excel
+setores/earnings_setoriais_auditados.xlsx     lucro setorial auditado, 11 abas, 2010 a 2026
+setores/build_earnings_workbook.mjs           gera o workbook setorial
 metodologia.md                                especificação completa, decisões e alternativas descartadas
 src/build_report.py                           gera o workbook
 src/final_regime_core.cjs                     núcleo canônico da classificação (Node)
@@ -53,6 +55,24 @@ data/cdi_2006_2013.json                       CDI diário do BCB SGS 12, 2006 a 
 
 O workbook tem o painel diário como base e as tabelas-resumo em fórmula (`SUMIFS`, `COUNTIFS`, `INDEX`), então tudo recalcula se a base for estendida. A classificação de regime entra como valor, porque a máquina de estados de confirmação mensal não se escreve em fórmula de planilha.
 
+## Lucro setorial
+
+`setores/earnings_setoriais_auditados.xlsx` traz a base de lucro por setor usada na extensão setorial do estudo, de janeiro de 2010 a julho de 2026, 156 empresas e 17 setores da taxonomia XP.
+
+O nível setorial é a soma do lucro estimado das empresas disponíveis no mês. A revisão de 3 meses usa **cesta constante**: compara apenas as companhias presentes nas duas pontas da janela, para que mudança de cobertura não seja confundida com revisão. As abas `Cobertura` e `Cobertura Revisao` mostram quantas empresas sustentam cada célula, o que importa porque vários setores têm de uma a três companhias.
+
+O mapa empresa para setor foi auditado manualmente e a aba `Mapa Setorial` registra a classificação final ao lado da original, com o score de pareamento. A aba `Checks` traz as validações de dimensão e consistência.
+
+| Aba | Conteúdo |
+|---|---|
+| `Nivel Setorial` | soma do lucro estimado, em R$ milhões |
+| `Nivel Base 100` | mesma série indexada a 100 no primeiro ponto de cada setor |
+| `Revisao 3M` | variação da soma em cesta constante |
+| `Detalhe Revisao` | abertura longa, com as duas pontas e o número de empresas comuns |
+| `Base Empresa` | série empresa a empresa, fonte auditável |
+| `Cobertura`, `Cobertura Revisao` | número de empresas por setor e mês |
+| `Mapa Setorial`, `Metodologia`, `Checks` | classificação, definições e validações |
+
 ## Fontes
 
 | Série | Origem |
@@ -64,9 +84,11 @@ O workbook tem o painel diário como base e as tabelas-resumo em fórmula (`SUMI
 | CDI | BCB SGS 12, diário |
 | USDBRL | PTAX diária do BCB |
 
-### Sobre a série de BPA
+### Sobre as séries de lucro
 
-A coluna do BPA foi **removida** do workbook publicado, por ser dado licenciado da Bloomberg. A inclinação de 63 pregões, que é a estatística efetivamente usada pela regra, continua na planilha, e todas as tabelas e gráficos funcionam sem a série bruta. Para regenerar o arquivo completo, basta ter o `Ibovespa Best EPS.xlsx` e rodar `src/build_report.py`.
+O workbook de regimes (`workbook/`) não traz a coluna do BPA do índice; a inclinação de 63 pregões, que é a estatística usada pela regra, está lá e todas as tabelas e gráficos funcionam sem a série bruta. Para regenerar o arquivo com a coluna, basta ter o `Ibovespa Best EPS.xlsx` e rodar `src/build_report.py`.
+
+O workbook setorial (`setores/`) **traz** as estimativas de lucro do consenso, empresa a empresa, na aba `Base Empresa`. São 156 companhias e 199 meses, em R$ milhões, extraídas de grids da Bloomberg. Quem for reutilizar deve verificar a própria licença de dados antes.
 
 ### Não reproduzido
 
