@@ -560,45 +560,84 @@ wa.cell(row + 1, 1, "CDI reconstruido do BCB SGS 12, diario, de 2006 a 2026. USD
 # ------------------------------------------------------ Trajetoria eventos
 wtr = wb.create_sheet("Trajetoria_eventos")
 cur_key = panel[-1]["key"]
-ev_cur = [k for k, ev in enumerate(eps_ev) if ev["key"] == cur_key][-5:]
-title(wtr, f"Ibovespa nos ultimos 5 episodios de {LABEL[cur_key]}",
-      "Retorno nominal acumulado a partir do primeiro pregao de cada episodio, ate 252 pregoes. Equivale ao grafico de ultimos eventos do report da XP.")
-hdrs = ["Pregao"] + [eps_ev[k]["start"] for k in ev_cur]
-head(wtr, 4, hdrs, [10] + [14] * len(ev_cur))
-wtr.cell(5, 1, "Pregoes do episodio").font = Font(name=ARIAL, size=9, bold=True)
-for j, k in enumerate(ev_cur):
-    wtr.cell(5, 2 + j, eps_ev[k]["nrows"]).font = Font(name=ARIAL, size=9, bold=True)
-for h in range(0, 253):
-    i = 6 + h
-    wtr.cell(i, 1, h)
-    for j, k in enumerate(ev_cur):
-        ev = eps_ev[k]
-        if h == 0:
-            wtr.cell(i, 2 + j, 0).number_format = PCT
+title(wtr, "Ibovespa nos ultimos 5 episodios de cada quadrante",
+      "Retorno nominal acumulado a partir do primeiro pregao de cada episodio, ate 252 pregoes. Um bloco por combinacao, no formato do grafico de ultimos eventos do report da XP.")
+wtr.column_dimensions["A"].width = 20
+blk = 4
+for key in ORDER:
+    ev_q = [k for k, ev in enumerate(eps_ev) if ev["key"] == key][-5:]
+    wtr.cell(blk, 1, LABEL[key] + ("  (quadrante corrente)" if key == cur_key else "")).font = H2
+    head(wtr, blk + 1, ["Pregao"] + [eps_ev[k]["start"] for k in ev_q], [20] + [14] * len(ev_q))
+    wtr.cell(blk + 2, 1, "Pregoes do episodio").font = Font(name=ARIAL, size=9, bold=True)
+    for j, k in enumerate(ev_q):
+        wtr.cell(blk + 2, 2 + j, eps_ev[k]["nrows"]).font = Font(name=ARIAL, size=9, bold=True)
+    for h in range(0, 253):
+        i = blk + 3 + h
+        wtr.cell(i, 1, h)
+        for j, k in enumerate(ev_q):
+            ev = eps_ev[k]
+            if h == 0:
+                wtr.cell(i, 2 + j, 0).number_format = PCT
+            else:
+                a, b = ev["srow"], ev["srow"] + h - 1
+                if b <= LAST:
+                    wtr.cell(i, 2 + j, f"=EXP(SUM({PD}!$L${a}:$L${b}))-1").number_format = PCT
+            wtr.cell(i, 2 + j).font = TXT
+    lc = LineChart()
+    lc.title = f"Ibovespa nos ultimos 5 episodios de {LABEL[key]}"
+    lc.y_axis.numFmt = "0%"
+    lc.y_axis.title = "Retorno nominal acumulado"
+    lc.x_axis.title = "Pregoes desde o primeiro sinal"
+    lc.x_axis.delete = False
+    lc.y_axis.delete = False
+    for j, k in enumerate(ev_q):
+        ref = Reference(wtr, min_col=2 + j, min_row=blk + 3, max_row=blk + 255)
+        ser = Series(ref, title=eps_ev[k]["start"])
+        ser.smooth = False
+        ser.marker = Marker(symbol="none")
+        lc.series.append(ser)
+    lc.set_categories(Reference(wtr, min_col=1, min_row=blk + 3, max_row=blk + 255))
+    lc.width, lc.height = 24, 12
+    wtr.add_chart(lc, f"H{blk + 1}")
+    blk += 259
+wtr.cell(blk, 1, "Convencao de estudo de evento, igual a do report da XP: a curva segue por 252 pregoes a partir do primeiro sinal, mesmo que o episodio termine antes. A linha de pregoes do episodio mostra ate onde a leitura fica dentro do quadrante.").font = SMALL
+wtr.cell(blk + 1, 1, "Depois desse ponto a curva ja mistura o quadrante seguinte.").font = SMALL
+
+# ------------------------------------------------- Acumulado por regime
+wac = wb.create_sheet("Acumulado_por_regime")
+title(wac, "Desempenho acumulado do Ibovespa dentro de cada regime",
+      "Cada curva acumula apenas os retornos dos dias pertencentes ao seu quadrante e fica horizontal nos demais dias. Nao representa uma carteira investida continuamente: mostra a contribuicao historica do Ibovespa nos intervalos de cada regime.")
+head(wac, 4, ["Data"] + [LABEL[k] for k in ORDER], [12, 22, 22, 22, 22])
+for k, r in enumerate(panel):
+    i = 5 + k
+    wac.cell(i, 1, dt.date.fromisoformat(r["date"])).number_format = DATE
+    for j, key in enumerate(ORDER):
+        col = get_column_letter(2 + j)
+        if k == 0:
+            wac.cell(i, 2 + j, 0).number_format = PCT
         else:
-            a = ev["srow"]
-            b = ev["srow"] + h - 1
-            if b <= LAST:
-                wtr.cell(i, 2 + j, f"=EXP(SUM({PD}!$L${a}:$L${b}))-1").number_format = PCT
-        wtr.cell(i, 2 + j).font = TXT
-lc = LineChart()
-lc.title = f"Ibovespa nos ultimos 5 episodios de {LABEL[cur_key]}"
-lc.y_axis.numFmt = "0%"
-lc.y_axis.title = "Retorno nominal acumulado"
-lc.x_axis.title = "Pregoes desde o primeiro sinal"
-lc.x_axis.delete = False
-lc.y_axis.delete = False
-for j, k in enumerate(ev_cur):
-    ref = Reference(wtr, min_col=2 + j, min_row=6, max_row=258)
-    ser = Series(ref, title=eps_ev[k]["start"])
-    ser.smooth = False
+            pr = i - 1
+            wac.cell(i, 2 + j, f'=(1+{col}{pr})*IF(AND({PD}!$H{k+1}="{key}",{PD}!$J{k+1}=1),EXP({PD}!$L{k+1}),1)-1').number_format = PCT
+        wac.cell(i, 2 + j).font = TXT
+ACL = 4 + n
+lca = LineChart()
+lca.title = "Ibovespa: desempenho acumulado dentro de cada regime"
+lca.y_axis.numFmt = "0%"
+lca.y_axis.title = "Retorno nominal acumulado"
+lca.x_axis.title = "Data"
+lca.x_axis.delete = False
+lca.y_axis.delete = False
+for j, key in enumerate(ORDER):
+    ref = Reference(wac, min_col=2 + j, min_row=4, max_row=ACL)
+    ser = Series(ref, title=LABEL[key])
+    ser.graphicalProperties = GraphicalProperties(ln=LineProperties(solidFill=COLOR[key], w=20000))
     ser.marker = Marker(symbol="none")
-    lc.series.append(ser)
-lc.set_categories(Reference(wtr, min_col=1, min_row=6, max_row=258))
-lc.width, lc.height = 24, 12
-wtr.add_chart(lc, "H4")
-wtr.cell(261, 1, "Convencao de estudo de evento, igual a do report da XP: a curva segue por 252 pregoes a partir do primeiro sinal, mesmo que o episodio termine antes. A linha 5 mostra quantos pregoes cada episodio durou.").font = SMALL
-wtr.cell(262, 1, "Depois desse ponto a curva ja mistura o quadrante seguinte, entao a leitura util e o trecho ate a duracao indicada.").font = SMALL
+    ser.smooth = False
+    lca.series.append(ser)
+lca.set_categories(Reference(wac, min_col=1, min_row=5, max_row=ACL))
+lca.width, lca.height = 32, 13
+wac.add_chart(lca, "H4")
+wac.cell(ACL + 2, 1, "O retorno de t para t+1 entra na curva do regime vigente em t, mesma convencao das demais abas. Retorno nominal, sem deflacao.").font = SMALL
 
 # ---------------------------------------------------------------- Graficos
 wg = wb.create_sheet("Graficos", 2)
@@ -756,7 +795,8 @@ info = [
     ("Ep_por_quadrante", "Os mesmos episodios separados por quadrante, no formato das tabelas do report, com mediana e taxa de acerto."),
     ("Classes_ativos", "Grade de classes de ativos por episodio, com media ponderada e taxa de acerto."),
     ("Transicoes", "Matriz de transicao entre quadrantes, equivalente ao diagrama do report."),
-    ("Trajetoria_eventos", "Retorno acumulado do Ibovespa nos ultimos cinco episodios do quadrante corrente, ate 252 pregoes."),
+    ("Acumulado_por_regime", "Desempenho acumulado do Ibovespa dentro de cada quadrante, com a curva parada nos dias fora do regime."),
+    ("Trajetoria_eventos", "Retorno acumulado do Ibovespa nos ultimos cinco episodios de cada um dos quatro quadrantes, ate 252 pregoes, com um grafico por bloco."),
     ("Painel_diario", "Base diaria completa. Todas as tabelas apontam para ela."),
     ("Mensal", "IPCA por mes e a alocacao do log da inflacao entre os intervalos de pregao."),
     ("Diagnostico", "Sensibilidade, teste de rotacao, bootstrap por episodio, poder preditivo e subamostras."),
@@ -792,7 +832,7 @@ for a, b in info:
 wl.cell(r + 1, 1, "Gerado em 02/09/2026. Nenhum arquivo de entrada foi alterado.").font = SMALL
 
 ordem = ["Leia-me", "Resumo_regimes", "Graficos", "Episodios", "Ep_por_quadrante", "Classes_ativos",
-         "Transicoes", "Trajetoria_eventos", "Diagnostico", "Painel_diario", "Mensal"]
+         "Transicoes", "Acumulado_por_regime", "Trajetoria_eventos", "Diagnostico", "Painel_diario", "Mensal"]
 wb._sheets = [wb[t] for t in ordem]
 
 for sheet in wb.worksheets:

@@ -40,7 +40,7 @@ Esta é uma decomposição histórica descritiva. Não é previsão, não é bac
 ## Arquivos
 
 ```
-workbook/regimes_earnings_juros_report.xlsx   11 abas, 5 gráficos nativos do Excel
+workbook/regimes_earnings_juros_report.xlsx   12 abas, 9 gráficos nativos do Excel
 metodologia.md                                especificação completa, decisões e alternativas descartadas
 src/build_report.py                           gera o workbook
 src/final_regime_core.cjs                     núcleo canônico da classificação (Node)
