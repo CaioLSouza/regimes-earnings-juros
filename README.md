@@ -42,6 +42,7 @@ Esta é uma decomposição histórica descritiva. Não é previsão, não é bac
 ```
 workbook/regimes_earnings_juros_report.xlsx   12 abas, 9 gráficos nativos do Excel
 setores/earnings_setoriais_auditados.xlsx     lucro setorial auditado, 11 abas, 2010 a 2026
+setores/focus_earnings_vs_rate_performance/  scatter que cruza beta de earnings ao Focus e beta de performance ao DI
 setores/build_earnings_workbook.mjs           gera o workbook setorial
 metodologia.md                                especificação completa, decisões e alternativas descartadas
 src/build_report.py                           gera o workbook
